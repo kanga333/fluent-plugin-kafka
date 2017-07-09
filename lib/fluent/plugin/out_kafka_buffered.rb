@@ -47,7 +47,9 @@ DESC
 Set true to remove topic name key from data
 DESC
 
-  config_param :kafka_agg_max_bytes, :size, :default => 4*1024  #4k
+  config_param :batch_size, :integer, :default => 1000
+  config_param :batch_size_bytes, :size, :default => 4*1024  #4k
+
   config_param :get_kafka_client_log, :bool, :default => false
 
   # ruby-kafka producer options
@@ -129,6 +131,11 @@ DESC
     if conf['ack_timeout_ms']
       log.warn "'ack_timeout_ms' parameter is deprecated. Use second unit 'ack_timeout' instead"
       @ack_timeout = conf['ack_timeout_ms'].to_i / 1000
+    end
+
+    if conf['kafka_agg_max_bytes']
+      log.warn "'kafka_agg_max_bytes' parameter is deprecated. Use 'batch_size_bytes' instead"
+      @batch_size_bytes = Fluent::Config.size_value(conf['kafka_agg_max_bytes'])
     end
 
     @f_separator = case @field_separator
@@ -271,8 +278,8 @@ DESC
           next
         end
 
-        if (messages > 0) and (messages_bytes + record_buf_bytes > @kafka_agg_max_bytes)
-          log.debug { "#{messages} messages send because reaches kafka_agg_max_bytes" }
+        if (messages > 0) and (messages_bytes + record_buf_bytes > @batch_size_bytes) or (messages >= @batch_size)
+          log.debug { "#{messages} messages send because reaches the limit of batch transmission." }
           deliver_messages(producer, tag)
           messages = 0
           messages_bytes = 0
