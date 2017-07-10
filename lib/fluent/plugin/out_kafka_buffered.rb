@@ -47,7 +47,7 @@ DESC
 Set true to remove topic name key from data
 DESC
 
-  config_param :batch_size, :integer, :default => 1000
+  config_param :batch_size, :integer, :default => nil
   config_param :batch_size_bytes, :size, :default => 4*1024  #4k
 
   config_param :get_kafka_client_log, :bool, :default => false
@@ -278,7 +278,7 @@ DESC
           next
         end
 
-        if (messages > 0) and (messages_bytes + record_buf_bytes > @batch_size_bytes) or (messages >= @batch_size)
+        if (messages > 0) and (messages_bytes + record_buf_bytes > @batch_size_bytes) or (@batch_size && messages >= @batch_size)
           log.debug { "#{messages} messages send because reaches the limit of batch transmission." }
           deliver_messages(producer, tag)
           messages = 0
